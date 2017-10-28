@@ -56,81 +56,87 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
    *  Initialization
    ****************************************************************************/
 	if (!is_initialized_) {
-	/**
-	TODO:
-		* Initialize the state ekf_.x_ with the first measurement.
-		* Create the covariance matrix.
-		* Remember: you'll need to convert radar from polar to cartesian coordinates.
-	*/
-	// first measurement
-	cout << "EKF: " << endl;
-	ekf_.x_ = VectorXd(4);
-	ekf_.x_ << 1, 1, 1, 1;
-
-	// prediction covariance matrix
-	ekf_.P_ = MatrixXd(4, 4);
-	ekf_.F_ = MatrixXd(4, 4);
-	ekf_.Q_ = MatrixXd(4, 4);
-
-	// initialize transition matrix
-	ekf_.F_ << 1, 0, 1, 0,
-				0, 1, 0, 1,
-				0, 0, 1, 0,
-				0, 0, 0, 1;
-
-	// initialize prediction covariance matrix
-	ekf_.P_ << 1, 0, 0, 0,
-				0, 1, 0, 0,
-				0, 0, 1000, 0,
-				0, 0, 0, 1000;
-
-	if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
 		/**
-		Convert radar from polar to cartesian coordinates and initialize state.
+		TODO:
+			* Initialize the state ekf_.x_ with the first measurement.
+			* Create the covariance matrix.
+			* Remember: you'll need to convert radar from polar to cartesian coordinates.
 		*/
+		// first measurement
+		cout << "EKF: " << endl;
+		ekf_.x_ = VectorXd(4);
+		ekf_.x_ << 1, 1, 1, 1;
 
-		float rho = measurement_pack.raw_measurements_(0);
-		float phi = measurement_pack.raw_measurements_(1);
-		float rhodot = measurement_pack.raw_measurements_(2);
+		// prediction covariance matrix
+		ekf_.P_ = MatrixXd(4, 4);
+		ekf_.F_ = MatrixXd(4, 4);
+		ekf_.Q_ = MatrixXd(4, 4);
 
-		px = rho * cos(phi);
-		py = rho * sin(phi);
+		// initialize transition matrix
+		ekf_.F_ << 1, 0, 1, 0,
+					0, 1, 0, 1,
+					0, 0, 1, 0,
+					0, 0, 0, 1;
 
-		vx = 0;
-		vy = 0;
+		// initialize prediction covariance matrix
+		ekf_.P_ << 1, 0, 0, 0,
+					0, 1, 0, 0,
+					0, 0, 1000, 0,
+					0, 0, 0, 1000;
 
+		// first measurement
+		float px;
+		float py;
+		float vx;
+		float vy;
+
+		if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
+			/**
+			Convert radar from polar to cartesian coordinates and initialize state.
+			*/
+
+			float rho = measurement_pack.raw_measurements_(0);
+			float phi = measurement_pack.raw_measurements_(1);
+			float rhodot = measurement_pack.raw_measurements_(2);
+
+			px = rho * cos(phi);
+			py = rho * sin(phi);
+
+			vx = 0;
+			vy = 0;
+
+		}
+		else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
+			/**
+				Initialize state.
+			*/
+			px = measurement_pack.raw_measurements_[0];
+			py = measurement_pack.raw_measurements_[1];
+			vx = 0;
+			vy = 0;
+		}
+
+		// Check if px, py are very small
+		if(fabs(px) < 0.0001){
+			px = 0.01;
+			cout << "init px too small" << endl;
+		}
+
+		if(fabs(py) < 0.0001){
+			py = 0.01;
+			cout << "init py too small" << endl;
+		}
+
+		//Initialize
+		ekf_.x_ << px,py,vx,vy;
+
+		// done initializing, no need to predict or update
+		is_initialized_ = true;
+
+		previous_timestamp_ = measurement_pack.timestamp_;
+
+		return;
 	}
-	else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
-		/**
-			Initialize state.
-		*/
-		px = measurement_pack.raw_measurements_[0];
-		py = measurement_pack.raw_measurements_[1];
-		vx = 0;
-		vy = 0;
-	}
-
-	// Check if px, py are very small
-	if(fabs(px) < 0.0001){
-		px = 0.01;
-		cout << "init px too small" << endl;
-	}
-
-	if(fabs(py) < 0.0001){
-		py = 0.01;
-		cout << "init py too small" << endl;
-	}
-
-    //Initialize
-    ekf_.x_ << px,py,vx,vy;
-
-	// done initializing, no need to predict or update
-	is_initialized_ = true;
-
-	previous_timestamp_ = measurement_pack.timestamp_;
-
-	return;
-}
 
   /*****************************************************************************
    *  Prediction
