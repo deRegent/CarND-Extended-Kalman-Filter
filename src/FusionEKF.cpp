@@ -36,18 +36,12 @@ FusionEKF::FusionEKF() {
 		* Finish initializing the FusionEKF.
 		* Set the process and measurement noises
 	*/
-	// measurement matrix - laser
 	H_laser_ << 1, 0, 0, 0,
 				0, 1, 0, 0;
 
-	// initialize jacobian matrix - Radar. Will be later updated
 	Hj_ << 0, 0, 0, 0,
 		0, 0, 0, 0,
 		0, 0, 0, 0;
-
-	// process noise
-	noise_ax = 9;
-	noise_ay = 9;
 }
 
 /**
@@ -122,12 +116,12 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   /**
    TODO:
      * Update the state transition matrix F according to the new elapsed time.
-      - Time is measured in seconds.
+     * Time is measured in seconds.
      * Update the process noise covariance matrix.
      * Use noise_ax = 9 and noise_ay = 9 for your Q matrix.
    */
 
-	//compute the time elapsed between the current and previous measurements
+	//compute the new elapsed time between the current and previous measurements
 	float dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000.0;	//dt - expressed in seconds
 	previous_timestamp_ = measurement_pack.timestamp_;
 
@@ -139,12 +133,15 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 	ekf_.F_(0, 2) = dt;
 	ekf_.F_(1, 3) = dt;
 
-	// Update the process covariance matrix Q
-	// noise_ax = 9 and noise_ay = 9
+	// Update the process noise covariance matrix.
+
+	noise_ax = 9;
+	noise_ay = 9;
+
 	ekf_.Q_ << dt_4 / 4 * noise_ax, 0, dt_3 / 2 * noise_ax, 0,
-	0, dt_4 / 4 * noise_ay, 0, dt_3 / 2 * noise_ay,
-	dt_3 / 2 * noise_ax, 0, dt_2*noise_ax, 0,
-	0, dt_3 / 2 * noise_ay, 0, dt_2*noise_ay;
+			0, dt_4 / 4 * noise_ay, 0, dt_3 / 2 * noise_ay,
+			dt_3 / 2 * noise_ax, 0, dt_2*noise_ax, 0,
+			0, dt_3 / 2 * noise_ay, 0, dt_2*noise_ay;
 
 	ekf_.Predict();
 
@@ -161,7 +158,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 	if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
 		// Radar updates
 		Tools tools;
-		ekf_.H_ = tools.CalculateJacobian(ekf_.x_);
+		Hj_ = tools.CalculateJacobian(ekf_.x_);
+		ekf_.H_ = Hj_;
 		ekf_.R_ = R_radar_;
 		ekf_.UpdateEKF(measurement_pack.raw_measurements_);
 	} else {
