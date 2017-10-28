@@ -86,20 +86,43 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 
 	if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
 		/**
-			Convert radar from polar to cartesian coordinates and initialize state.
+		Convert radar from polar to cartesian coordinates and initialize state.
 		*/
-		double ro = measurement_pack.raw_measurements_[0];
-		double phi = measurement_pack.raw_measurements_[1];
-		double ro_dot = measurement_pack.raw_measurements_[2];
 
-		ekf_.x_ << ro * cos(phi), ro * sin(phi), ro_dot * cos(phi), ro_dot * sin(phi);
+		float rho = measurement_pack.raw_measurements_(0);
+		float phi = measurement_pack.raw_measurements_(1);
+		float rhodot = measurement_pack.raw_measurements_(2);
+
+		px = rho * cos(phi);
+		py = rho * sin(phi);
+
+		vx = 0;
+		vy = 0;
+
 	}
 	else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
 		/**
 			Initialize state.
 		*/
-		ekf_.x_ << measurement_pack.raw_measurements_(0), measurement_pack.raw_measurements_(1), 0.0, 0.0;
+		px = measurement_pack.raw_measurements_[0];
+		py = measurement_pack.raw_measurements_[1];
+		vx = 0;
+		vy = 0;
 	}
+
+	// Check if px, py are very small
+	if(fabs(px) < 0.0001){
+		px = 0.01;
+		cout << "init px too small" << endl;
+	}
+
+	if(fabs(py) < 0.0001){
+		py = 0.01;
+		cout << "init py too small" << endl;
+	}
+
+    //Initialize
+    ekf_.x_ << px,py,vx,vy;
 
 	// done initializing, no need to predict or update
 	is_initialized_ = true;
